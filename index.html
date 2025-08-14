@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BitCry — Encrypted Notes</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root{
+    --bg-0:#0f1320;
+    --bg-1:#151a2c;
+    --card:#171e33;
+    --text:#e8ecf3;
+    --muted:#9aa3b2;
+    --line:rgba(255,255,255,.08);
+    --accent:#4da3ff;
+    --accent-2:#8f61ff;
+    --good:#3bd671;
+    --bad:#ff667a;
+    --warning:#ffc04d;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+    --radius:14px;
+    --speed:.25s;
+    --bezier:cubic-bezier(.2,.8,.2,1);
+  }
+  /* Light theme variables switched in JS via [data-theme] */
+  body[data-theme="light"]{
+    --bg-0:#f6f7fb;
+    --bg-1:#ffffff;
+    --card:#ffffff;
+    --text:#0b1020;
+    --muted:#5a6475;
+    --line:rgba(0,0,0,.08);
+    --accent:#0f7bff;
+    --accent-2:#7a3cff;
+    --shadow:0 10px 30px rgba(32,44,80,.12);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(77,163,255,.18), transparent 60%),
+      radial-gradient(1200px 600px at 90% 10%, rgba(143,97,255,.16), transparent 60%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1));
+    color:var(--text);
+    letter-spacing:.2px;
+  }
+
+  header{
+    position:sticky; top:0; z-index:5;
+    backdrop-filter:saturate(140%) blur(10px);
+    background:linear-gradient(90deg,rgba(255,255,255,.02),rgba(255,255,255,0))
+               ,linear-gradient(180deg,rgba(0,0,0,.25),transparent);
+    border-bottom:1px solid var(--line);
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 20px;display:flex;gap:14px;align-items:center}
+  .brand{
+    display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.4px;
+  }
+  .logo{
+    width:34px;height:34px;border-radius:10px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+    background:conic-gradient(from 210deg,var(--accent),var(--accent-2),var(--accent));
+    transform:perspective(600px) rotateX(8deg); transition:transform .5s var(--bezier);
+  }
+  .logo::after{
+    content:""; position:absolute; inset:1px; border-radius:9px; background:
+      linear-gradient(180deg,rgba(0,0,0,.35),rgba(255,255,255,.03));
+  }
+  .brand:hover .logo{ transform:perspective(600px) rotateX(0deg) scale(1.02); }
+
+  .spacer{flex:1}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  input[type="search"], .input, textarea{
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:12px;
+    padding:10px 12px;
+    outline:none;
+    transition:border-color var(--speed) var(--bezier), box-shadow var(--speed) var(--bezier), transform var(--speed) var(--bezier);
+  }
+  input[type="search"]:focus, .input:focus, textarea:focus{
+    border-color:color-mix(in oklab, var(--accent) 70%, transparent);
+    box-shadow:0 0 0 6px color-mix(in oklab, var(--accent) 18%, transparent);
+    transform:translateY(-1px);
+  }
+  input[type="search"]{width:260px}
+  button{
+    appearance:none; border:0; background:transparent; color:var(--text); cursor:pointer;
+    padding:10px 14px; border-radius:12px; font-weight:600; letter-spacing:.2px; position:relative; isolation:isolate;
+    transition:transform var(--speed) var(--bezier), filter var(--speed) var(--bezier);
+  }
+  .btn{
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+  }
+  .btn:hover{ transform:translateY(-1px) }
+  .btn:active{ transform:translateY(0) scale(.98) }
+
+  .btn-primary{
+    background:
+      linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, transparent), color-mix(in oklab, var(--accent-2) 70%, transparent));
+    border:1px solid color-mix(in oklab, var(--accent) 50%, var(--line));
+    color:#fff;
+  }
+
+  main{max-width:1100px;margin:20px auto;padding:0 20px}
+
+  .meta-bar{display:flex;align-items:center;gap:10px;margin:8px 0 18px}
+  .meta-bar .pill{
+    font-size:.85rem;color:var(--muted);padding:6px 10px;border-radius:999px;border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01));
+  }
+
+  .notes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:16px;
+  }
+
+  .card{
+    position:relative;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    min-height:140px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    transition:transform .35s var(--bezier), box-shadow .35s var(--bezier), border-color var(--speed);
+    cursor:pointer;
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(300px 80px at var(--mx,50%) -20%, rgba(255,255,255,.20), transparent 60%);
+    opacity:0; transition:opacity .35s var(--bezier);
+  }
+  .card:hover{ transform:translateY(-4px); border-color:color-mix(in oklab,var(--accent) 35%, var(--line)) }
+  .card:hover::before{ opacity:1 }
+  .card h3{margin:0 0 6px;font-size:1.05rem}
+  .card .small{color:var(--muted);font-size:.83rem}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:.8rem;color:var(--muted);border:1px dashed var(--line);border-radius:999px;padding:4px 8px;margin-top:8px;
+  }
+  .chip.locked{border-style:solid;color:color-mix(in oklab, var(--accent) 70%, var(--muted))}
+  .chip.unlocked{border-color:color-mix(in oklab, var(--good) 60%, var(--line)); color:var(--good)}
+  .card .preview{margin-top:8px;color:var(--muted);max-height:3.6em;overflow:hidden}
+
+  /* Modals */
+  .modal{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; z-index:30;
+    background:color-mix(in oklab, black 40%, transparent);
+  }
+  .modal.open{ display:flex; animation:fadeIn .2s var(--bezier) }
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  .sheet{
+    width:min(680px,100%); background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow);
+    transform:translateY(10px) scale(.98); opacity:0; animation:sheetIn .28s var(--bezier) forwards;
+  }
+  @keyframes sheetIn{to{transform:translateY(0) scale(1);opacity:1}}
+
+  .sheet header{position:relative; border:0; background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0)); border-bottom:1px solid var(--line); border-top-left-radius:18px;border-top-right-radius:18px}
+  .sheet .content{padding:16px}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .row .col{flex:1 1 240px}
+  label{display:block; font-weight:600; font-size:.88rem; margin:12px 0 6px}
+  textarea{width:100%; min-height:180px; resize:vertical}
+  .actions{display:flex; gap:10px; justify-content:flex-end; padding:14px 16px; border-top:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.02),transparent); border-bottom-left-radius:18px;border-bottom-right-radius:18px}
+  .danger{background:linear-gradient(180deg, rgba(255,102,122,.2), rgba(255,102,122,.08)); border:1px solid color-mix(in oklab, var(--bad) 35%, var(--line)); color:#fff}
+
+  .toggle-pass{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:0; padding:6px; cursor:pointer; color:var(--muted);
+  }
+  .field{
+    position:relative;
+  }
+
+  /* Toasts */
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    border:1px solid var(--line); border-radius:14px; padding:10px 14px; color:var(--text); box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transition:opacity .25s var(--bezier), transform .25s var(--bezier);
+    z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px) }
+  .toast.good{ border-color:color-mix(in oklab, var(--good) 45%, var(--line)) }
+  .toast.bad{ border-color:color-mix(in oklab, var(--bad) 45%, var(--line)) }
+
+  .hint{color:var(--muted); font-size:.86rem}
+  .muted{color:var(--muted)}
+  .hidden{display:none}
+  .hr{height:1px; background:var(--line); margin:12px 0}
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand" title="BitCry — Encrypted Notes">
+        <div class="logo" aria-hidden="true"></div>
+        <div>BitCry</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search labels…" aria-label="Search notes by label" />
+        <button id="btnNew" class="btn-primary">+ New note</button>
+        <button id="btnExport" class="btn">Export</button>
+        <button id="btnImport" class="btn">Import</button>
+        <button id="btnLockAll" class="btn">Lock all</button>
+        <button id="btnTheme" class="btn" title="Toggle theme">Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="meta-bar">
+      <div class="pill" id="counter">0 notes</div>
+      <div class="pill">Client-side AES-GCM encryption</div>
+      <div class="pill">Auto-lock after inactivity</div>
+    </div>
+    <section id="grid" class="notes-grid" aria-live="polite"></section>
+  </main>
+
+  <!-- New Note Modal -->
+  <div id="modal-new" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-title">
+    <div class="sheet" style="width:min(760px,100%)">
+      <header class="wrap" style="padding:14px 16px">
+        <h2 id="new-title" style="margin:0">Create a new note</h2>
+        <div class="spacer"></div>
+        <button class="btn" data-close="modal-new" aria-label="Close">Close</button>
+      </header>
+      <form id="form-new">
+        <div class="content">
+          <div class="row">
+            <div class="col">
+              <label for="new-label">Label (visible without unlocking)</label>
+              <input id="new-label" class="input" placeholder="e.g., Q3 Strategy" />
+            </div>
+            <div class="col">
+              <label for="new-title-in">Title (encrypted)</label>
+              <input id="new-title-in" class="input" placeholder="Title" required />
+            </div>
+          </div>
+          <label for="new-body">Content (encrypted)</label>
+          <textarea id="new-body" placeholder="Write your note…" required></textarea>
+
+          <div class="hr"></div>
+
+          <div class="row">
+            <div class="col field">
+              <label for="new-pass">Password</label>
+              <input id="new-pass" class="input" type="password" minlength="6" required placeholder="At least 6 characters" />
+              <button class="toggle-pass" type="button" data-toggle="#new-pass" aria-label="Toggle password">👁</button>
+            </div>
+            <div class="col field">
+              <label for="new-pass2">Confirm password</label>
+              <input id="new-pass2" class="input" type="password" minlength="6" required placeholder="Re-enter password" />
+              <button class="toggle-pass" type="button" data-toggle="#new-pass2" aria-label="Toggle password">👁</button>
+            </div>
+          </div>
+          <div class="hint">Pro tip: Export regularly to keep a backup of your encrypted notes.</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" data-close="modal-new">Cancel</button>
+          <button id="new-save" class="btn-primary" type="submit">Save note</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Unlock Modal -->
+  <div id="modal-unlock" class="modal" role="dialog" aria-modal="true" aria-labelledby="unlock-title">
+    <div class="sheet" style="width:min(520px,100%)">
+      <header class="wrap" style="padding:14px 16px">
+        <h2 id="unlock-title" style="margin:0">Unlock note</h2>
+        <div class="spacer"></div>
+        <button class="btn" data-close="modal-unlock" aria-label="Close">Close</button>
+      </header>
+      <form id="form-unlock">
+        <div class="content">
+          <div class="muted" id="unlock-label"></div>
+          <div class="field">
+            <label for="unlock-pass">Password</label>
+            <input id="unlock-pass" class="input" type="password" required placeholder="Enter password" />
+            <button class="toggle-pass" type="button" data-toggle="#unlock-pass" aria-label="Toggle password">👁</button>
+          </div>
+          <div class="hint">BitCry decrypts locally in your browser. Wrong password = no access.</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" data-close="modal-unlock">Cancel</button>
+          <button class="btn-primary" type="submit">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Editor Modal -->
+  <div id="modal-edit" class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <div class="sheet">
+      <header class="wrap" style="padding:14px 16px">
+        <h2 id="edit-title" style="margin:0">Edit note</h2>
+        <div class="spacer"></div>
+        <button class="btn" data-close="modal-edit" aria-label="Close">Close</button>
+      </header>
+      <form id="form-edit">
+        <div class="content">
+          <div class="row">
+            <div class="col">
+              <label for="edit-label">Label</label>
+              <input id="edit-label" class="input" />
+            </div>
+            <div class="col">
+              <label for="edit-title-in">Title</label>
+              <input id="edit-title-in" class="input" required />
+            </div>
+          </div>
+          <label for="edit-body">Content</label>
+          <textarea id="edit-body" required></textarea>
+
+          <div class="hr"></div>
+          <details id="pw-details">
+            <summary style="cursor:pointer">Change password</summary>
+            <div class="row" style="margin-top:8px">
+              <div class="col field">
+                <label for="edit-pass">New password</label>
+                <input id="edit-pass" class="input" type="password" minlength="6" placeholder="Leave empty to keep current" />
+                <button class="toggle-pass" type="button" data-toggle="#edit-pass" aria-label="Toggle password">👁</button>
+              </div>
+              <div class="col field">
+                <label for="edit-pass2">Confirm new password</label>
+                <input id="edit-pass2" class="input" type="password" minlength="6" placeholder="Repeat new password" />
+                <button class="toggle-pass" type="button" data-toggle="#edit-pass2" aria-label="Toggle password">👁</button>
+              </div>
+            </div>
+          </details>
+          <div class="hint">Unlocked in memory until auto-lock or “Lock all”.</div>
+        </div>
+        <div class="actions">
+          <button id="btnDelete" type="button" class="danger">Delete</button>
+          <div class="spacer"></div>
+          <button type="button" class="btn" data-close="modal-edit">Close</button>
+          <button class="btn-primary" type="submit">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="file-import" type="file" accept=".bitcry,.json" class="hidden" />
+
+<script>
+(() => {
+  "use strict";
+
+  /*** ---------- Utilities ---------- ***/
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  function escapeHTML(s){
+    return String(s ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  function ab2b64(buf){
+    const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let binary = "";
+    const chunk = 0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+    }
+    return btoa(binary);
+  }
+  function b642ab(b64){
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  function genId(){
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    return [...b].map((v,i)=> (i===6? (v & 0x0f) | 0x40 : i===8? (v & 0x3f) | 0x80 : v).toString(16).padStart(2,'0')).join('');
+  }
+  function fmtDate(ts){
+    const d = new Date(ts);
+    return d.toLocaleString(undefined, {year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+  }
+  function showToast(msg, kind=""){
+    const el = $("#toast");
+    el.textContent = msg;
+    el.className = `toast show ${kind}`;
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> el.className = "toast", 2200);
+  }
+
+  /*** ---------- Crypto ---------- ***/
+  const KDF_ITER = 250000; // strong-ish but still snappy
+  async function deriveKey(password, saltB64){
+    const salt = saltB64 ? new Uint8Array(b642ab(saltB64)) : crypto.getRandomValues(new Uint8Array(16));
+    const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+      { name:"PBKDF2", salt, iterations:KDF_ITER, hash:"SHA-256" },
+      baseKey,
+      { name:"AES-GCM", length:256 },
+      false,
+      ["encrypt","decrypt"]
+    );
+    return { key, saltB64: ab2b64(salt) };
+  }
+
+  async function encryptPayload(obj, key){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = enc.encode(JSON.stringify(obj));
+    const cipher = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, data);
+    return { iv: ab2b64(iv), ciphertext: ab2b64(cipher) };
+  }
+
+  async function decryptPayload(note, key){
+    const iv = new Uint8Array(b642ab(note.iv));
+    const data = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, b642ab(note.ciphertext));
+    return JSON.parse(dec.decode(new Uint8Array(data)));
+  }
+
+  /*** ---------- Storage ---------- ***/
+  const LS_KEY = "bitcry_notes";
+  function loadNotes(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    }catch{ return []; }
+  }
+  function saveNotes(notes){
+    localStorage.setItem(LS_KEY, JSON.stringify(notes));
+  }
+
+  /*** ---------- State ---------- ***/
+  let notes = loadNotes();
+  let filter = "";
+  let unlockTargetId = null;
+  let editTargetId = null;
+  const unlocked = new Map(); // id -> { key, title, body, saltB64 }
+
+  const themeKey = "bitcry_theme";
+  function applyTheme(){
+    const pref = localStorage.getItem(themeKey) || (matchMedia('(prefers-color-scheme: light)').matches ? "light":"dark");
+    document.body.setAttribute("data-theme", pref);
+  }
+  function toggleTheme(){
+    const now = document.body.getAttribute("data-theme")==="light" ? "dark" : "light";
+    document.body.setAttribute("data-theme", now);
+    localStorage.setItem(themeKey, now);
+  }
+
+  /*** ---------- Rendering ---------- ***/
+  function render(){
+    const grid = $("#grid");
+    grid.innerHTML = "";
+    const q = filter.trim().toLowerCase();
+    const sorted = [...notes].sort((a,b)=> (b.updatedAt||b.createdAt) - (a.updatedAt||a.createdAt))
+                             .filter(n => n.label?.toLowerCase().includes(q));
+    $("#counter").textContent = `${sorted.length} note${sorted.length!==1?'s':''}`;
+
+    if(sorted.length===0){
+      const empty = document.createElement("div");
+      empty.className="muted";
+      empty.style.padding="24px";
+      empty.textContent = q ? "No notes match your search." : "No notes yet. Create your first encrypted note.";
+      grid.appendChild(empty);
+      return;
+    }
+
+    for(const n of sorted){
+      const card = document.createElement("article");
+      card.className = "card";
+      card.tabIndex = 0;
+      card.setAttribute("role","button");
+      card.addEventListener("mousemove", e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", ((e.clientX - r.left)/r.width*100)+"%");
+      });
+
+      const h3 = document.createElement("h3");
+      h3.textContent = n.label || "Untitled";
+      card.appendChild(h3);
+
+      const small = document.createElement("div");
+      small.className = "small";
+      small.textContent = `Updated ${fmtDate(n.updatedAt||n.createdAt)}`;
+      card.appendChild(small);
+
+      const chip = document.createElement("div");
+      const isUnlocked = unlocked.has(n.id);
+      chip.className = `chip ${isUnlocked ? "unlocked":"locked"}`;
+      chip.innerHTML = isUnlocked ? "🔓 Unlocked in session" : "🔒 Locked";
+      card.appendChild(chip);
+
+      if(isUnlocked){
+        const pv = document.createElement("div");
+        pv.className="preview";
+        const { title, body } = unlocked.get(n.id);
+        pv.textContent = `${title} — ${String(body).slice(0,140)}`;
+        card.appendChild(pv);
+      }
+
+      card.addEventListener("click", () => onOpenNote(n));
+      card.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); onOpenNote(n); }});
+      grid.appendChild(card);
+    }
+  }
+
+  /*** ---------- Inactivity Auto-lock ---------- ***/
+  let lockTimer = null;
+  function resetInactivity(){
+    if(lockTimer) clearTimeout(lockTimer);
+    lockTimer = setTimeout(()=>{
+      unlocked.clear();
+      closeModal("#modal-edit");
+      showToast("Auto-locked all notes", "good");
+      render();
+    }, 3 * 60 * 1000); // 3 minutes
+  }
+  ["click","keydown","mousemove","touchstart"].forEach(evt => document.addEventListener(evt, resetInactivity, {passive:true}));
+  resetInactivity();
+
+  /*** ---------- Modal helpers ---------- ***/
+  function openModal(sel){
+    const m = $(sel);
+    if(!m) return;
+    m.classList.add("open");
+    setTimeout(()=> {
+      const focusable = m.querySelector("input,textarea,button,summary,select");
+      focusable && focusable.focus();
+    }, 30);
+  }
+  function closeModal(sel){
+    const m = typeof sel==="string" ? $(sel) : sel;
+    if(m) m.classList.remove("open");
+  }
+  $$("[data-close]").forEach(btn => btn.addEventListener("click", e => closeModal("#"+btn.dataset.close)));
+  document.addEventListener("keydown", e=>{
+    if(e.key==="Escape"){
+      const open = $$(".modal.open");
+      if(open.length) closeModal(open[open.length-1]);
+    }
+  });
+
+  /*** ---------- Actions ---------- ***/
+  $("#btnTheme").addEventListener("click", toggleTheme);
+  $("#btnNew").addEventListener("click", () => {
+    $("#form-new").reset();
+    openModal("#modal-new");
+  });
+  $("#btnExport").addEventListener("click", doExport);
+  $("#btnImport").addEventListener("click", () => $("#file-import").click());
+  $("#btnLockAll").addEventListener("click", () => {
+    unlocked.clear();
+    closeModal("#modal-edit");
+    render();
+    showToast("Locked all notes");
+  });
+
+  $("#search").addEventListener("input", e => {
+    filter = e.target.value;
+    render();
+  });
+
+  // Toggle any password visibility
+  document.body.addEventListener("click", e=>{
+    const t = e.target.closest(".toggle-pass");
+    if(!t) return;
+    const sel = t.dataset.toggle;
+    const input = $(sel);
+    if(!input) return;
+    input.type = input.type === "password" ? "text" : "password";
+  });
+
+  /*** ---------- Create new note ---------- ***/
+  $("#form-new").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const label = $("#new-label").value.trim();
+    const title = $("#new-title-in").value.trim();
+    const body  = $("#new-body").value;
+    const pass  = $("#new-pass").value;
+    const pass2 = $("#new-pass2").value;
+
+    if(pass !== pass2){ showToast("Passwords do not match","bad"); return; }
+    if(pass.length < 6){ showToast("Password too short","bad"); return; }
+
+    try{
+      const { key, saltB64 } = await deriveKey(pass);
+      const payload = { title, body };
+      const { iv, ciphertext } = await encryptPayload(payload, key);
+      const now = Date.now();
+      const note = {
+        id: genId(),
+        label,
+        algo:"AES-GCM", kdf:"PBKDF2", hash:"SHA-256", iterations:KDF_ITER,
+        salt: saltB64, iv, ciphertext,
+        createdAt: now, updatedAt: now, version:1
+      };
+      notes.push(note);
+      saveNotes(notes);
+      showToast("Note saved","good");
+      closeModal("#modal-new");
+      render();
+    }catch(err){
+      console.error(err);
+      showToast("Failed to create note","bad");
+    }
+  });
+
+  /*** ---------- Open / Unlock / Edit ---------- ***/
+  function onOpenNote(n){
+    if(unlocked.has(n.id)){
+      editTargetId = n.id;
+      const { title, body } = unlocked.get(n.id);
+      $("#edit-label").value = n.label || "";
+      $("#edit-title-in").value = title;
+      $("#edit-body").value = body;
+      $("#edit-pass").value = "";
+      $("#edit-pass2").value = "";
+      openModal("#modal-edit");
+      return;
+    }
+    // Ask for password
+    unlockTargetId = n.id;
+    $("#unlock-label").innerHTML = `Label: <b>${escapeHTML(n.label || "Untitled")}</b>`;
+    $("#form-unlock").reset();
+    openModal("#modal-unlock");
+  }
+
+  $("#form-unlock").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const pass = $("#unlock-pass").value;
+    const note = notes.find(n => n.id === unlockTargetId);
+    if(!note){ showToast("Note not found","bad"); return; }
+    try{
+      const { key } = await deriveKey(pass, note.salt);
+      const { title, body } = await decryptPayload(note, key);
+      unlocked.set(note.id, { key, title, body, saltB64: note.salt });
+      closeModal("#modal-unlock");
+
+      // Open editor immediately
+      editTargetId = note.id;
+      $("#edit-label").value = note.label || "";
+      $("#edit-title-in").value = title;
+      $("#edit-body").value = body;
+      $("#edit-pass").value = "";
+      $("#edit-pass2").value = "";
+      openModal("#modal-edit");
+      render();
+    }catch(err){
+      showToast("Wrong password","bad");
+    }
+  });
+
+  $("#form-edit").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const note = notes.find(n => n.id === editTargetId);
+    if(!note){ showToast("Note not found","bad"); return; }
+    const info = unlocked.get(note.id);
+    if(!info){ showToast("Note is locked","bad"); return; }
+
+    const label = $("#edit-label").value.trim();
+    const title = $("#edit-title-in").value.trim();
+    const body  = $("#edit-body").value;
+
+    const newPass = $("#edit-pass").value;
+    const newPass2= $("#edit-pass2").value;
+
+    try{
+      let key = info.key, saltB64 = info.saltB64;
+
+      if(newPass || newPass2){
+        if(newPass.length < 6){ showToast("New password too short","bad"); return; }
+        if(newPass !== newPass2){ showToast("New passwords do not match","bad"); return; }
+        const res = await deriveKey(newPass);
+        key = res.key; saltB64 = res.saltB64;
+      }
+
+      const { iv, ciphertext } = await encryptPayload({ title, body }, key);
+      note.label = label;
+      note.salt = saltB64;
+      note.iv = iv;
+      note.ciphertext = ciphertext;
+      note.updatedAt = Date.now();
+      saveNotes(notes);
+
+      // update unlocked cache
+      unlocked.set(note.id, { key, title, body, saltB64 });
+      showToast("Saved changes","good");
+      closeModal("#modal-edit");
+      render();
+    }catch(err){
+      console.error(err);
+      showToast("Failed to save","bad");
+    }
+  });
+
+  $("#btnDelete").addEventListener("click", ()=>{
+    if(!editTargetId) return;
+    const n = notes.find(x=>x.id===editTargetId);
+    const label = n?.label || "this note";
+    if(confirm(`Delete "${label}"? This cannot be undone.`)){
+      notes = notes.filter(x=> x.id !== editTargetId);
+      saveNotes(notes);
+      unlocked.delete(editTargetId);
+      closeModal("#modal-edit");
+      render();
+      showToast("Deleted","good");
+    }
+  });
+
+  /*** ---------- Import / Export ---------- ***/
+  async function doExport(){
+    const payload = {
+      app:"BitCry",
+      schema:1,
+      exportedAt:new Date().toISOString(),
+      notes
+    };
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+    const ts = new Date();
+    const name = `bitcry-backup-${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,"0")}${String(ts.getDate()).padStart(2,"0")}-${String(ts.getHours()).padStart(2,"0")}${String(ts.getMinutes()).padStart(2,"0")}${String(ts.getSeconds()).padStart(2,"0")}.bitcry`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.click();
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    showToast("Exported backup","good");
+  }
+
+  $("#file-import").addEventListener("change", async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const obj = JSON.parse(text);
+      const incoming = Array.isArray(obj) ? obj : (Array.isArray(obj.notes) ? obj.notes : []);
+      if(!incoming.length) throw new Error("No notes found in file.");
+
+      // Merge and avoid id collisions
+      const ids = new Set(notes.map(n=>n.id));
+      for(const n of incoming){
+        if(!n || !n.id || !n.ciphertext || !n.salt || !n.iv) continue;
+        if(ids.has(n.id)) n.id = genId();
+        ids.add(n.id);
+        notes.push(n);
+      }
+      saveNotes(notes);
+      render();
+      showToast(`Imported ${incoming.length} note${incoming.length!==1?'s':''}`,"good");
+    }catch(err){
+      console.error(err);
+      showToast("Import failed","bad");
+    }finally{
+      e.target.value = "";
+    }
+  });
+
+  /*** ---------- Init ---------- ***/
+  applyTheme();
+  render();
+})();
+</script>
+</body>
+</html>
