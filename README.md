@@ -23,7 +23,7 @@ Secure the location – Prevent the suspect from destroying or modifying evidenc
 
 Seize all relevant devices and storage media – Including computers, phones, backups, and any other data sources.
 
-Compel password disclosure – Through appropriate legal authority, interrogation, or other lawful investigative techniques.
+Force password disclosure – Through appropriate authority, interrogation, or other investigative techniques.
 
 Decrypt the data – Using the suspect’s provided password.
 
@@ -35,4 +35,4 @@ Pursue legal action – Issue fines, imprisonment, or other penalties as permitt
 
 Conduct further investigations – Trace suspicious links, identify buyers/sellers of illegal goods or services (physical or digital), and gather intelligence to dismantle related networks.
 
-The author’s role ends at the distribution of this tool. Any investigative or enforcement actions are the responsibility of the appropriate legal authorities.
+The author’s role ends at the distribution of this tool. Any investigative or enforcement actions are the responsibility of the legal authorities.
